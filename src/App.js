@@ -3,19 +3,59 @@ import { useState } from 'react';
 function Square({ value, onSquareClick }) {
 
   return (
-    <button
-      className="square"
-      onClick={onSquareClick}
-    >
+    <button className="square" onClick={onSquareClick}>
       {value}
     </button>
   );
 }
 
-export default function Board() {
-  const [xIsNext, setXIsNext] = useState(true);
-  const [squares, setSquares] = useState(Array(9).fill(null));
+/**
+ * Lifting the state from Board into Game, state should always be in top level
+ */
+export default function Game() {
+  const [history, setHistory] = useState([Array(9).fill(null)]); //this will be an array of arrays, initialises at point 0 in time
+  const [currentMove, setCurrentMove] = useState(0);
+  const currentSquares = history[currentMove];
+  const xIsNext = currentMove % 2 === 0;  
 
+  function handlePlay(nextSquares) {
+    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
+    setHistory(nextHistory); //creates new array with all of old array and nextSquares appended to the end
+    // ...history spread syntax = "enumerate all the items in history"
+    setCurrentMove(nextHistory.length - 1);
+  }
+
+  function jumpTo(nextMove) {
+    setCurrentMove(nextMove);
+  }
+
+  const moves = history.map((squares, move) => {
+    let description;
+    if (move > 0) {
+      description = 'Go to move #' + move;
+    } else { 
+      description = 'Go to game start';
+    }
+
+    return ( 
+      <li key={move}>
+        <button onClick = {() => jumpTo(move)}>{description}</button>
+      </li>
+    )
+  })
+ return (
+  <div className='game'>
+    <div className='game-board'>
+      <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay}/>
+    </div>
+    <div className='game-info'>
+      <ol>{moves}</ol>
+    </div>
+  </div>
+ )
+}
+
+function Board({ xIsNext, squares, onPlay }) {
   const winner = calculateWinner(squares);
   let status;
   if (winner) {
@@ -30,10 +70,8 @@ export default function Board() {
     }
     const nextSquares = squares.slice();
     xIsNext ? nextSquares[i] = "X" : nextSquares[i] = "O";
-    console.log("Square: ", i, " set!");
-    setSquares(nextSquares);
-    console.log(squares, " changed to ", nextSquares);
-    setXIsNext(!xIsNext);
+    onPlay(nextSquares)
+    console.log("Square: ", i, " set!\n", squares, " changed to ", nextSquares);
   }
 
   /***In this below, onSquareClick needs an arrow function {() =>  }
